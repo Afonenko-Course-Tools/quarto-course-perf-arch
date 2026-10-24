@@ -16,7 +16,12 @@ podman=(podman --root "$cache/podman-root" --runroot "$cache/podman-run" --stora
 name="perf-arch-$$"
 trap '"${podman[@]}" rm -f "$name" >/dev/null 2>&1 || true' EXIT
 printf '%s\n' "$image" > "$evidence/image.txt"
-"${podman[@]}" pull --policy missing "$image" > "$evidence/pull.log" 2>&1
+# Ubuntu runner поставляет Podman без pull --policy; image exists поддерживается им.
+if ! "${podman[@]}" image exists "$image"; then
+  "${podman[@]}" pull "$image" > "$evidence/pull.log" 2>&1
+else
+  printf 'Использован закреплённый образ из кэша: %s\n' "$image" > "$evidence/pull.log"
+fi
 "${podman[@]}" run -i --name "$name" --network host --userns keep-id:uid=1000,gid=1000 --user root \
   -v "$repo:/input:ro" -v "$evidence:/evidence:rw" -v "$cache/source-cache:/source-cache:rw" -e PACKAGING_COMMIT="$packaging_commit" "$image" bash -s > "$evidence/build.log" 2>&1 <<'ARCH'
 set -euxo pipefail
