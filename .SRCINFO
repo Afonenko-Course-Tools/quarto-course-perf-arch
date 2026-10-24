@@ -1,0 +1,23 @@
+pkgbase = quarto-course-perf
+	pkgdesc = Измерение рендера Quarto и изолированные эксперименты курса
+	pkgver = 2.0.0
+	pkgrel = 1
+	url = https://github.com/Afonenko-Course-Tools/quarto-course-performance
+	arch = any
+	depends = deno
+	depends = quarto
+	depends = time
+	depends = util-linux
+	optdepends = hyperfine: сравнительные измерения
+	optdepends = git: получение исходников эксперимента
+	optdepends = unzip: распаковка расширенных входных данных
+	noextract = typescript-5.9.3.tgz
+	noextract = luaparse-0.3.1.tgz
+	source = quarto-course-perf-2.0.0.tar.gz::https://github.com/Afonenko-Course-Tools/quarto-course-performance/releases/download/v2.0.0/quarto-course-perf-2.0.0.tar.gz
+	source = typescript-5.9.3.tgz::https://registry.npmjs.org/typescript/-/typescript-5.9.3.tgz
+	source = luaparse-0.3.1.tgz::https://registry.npmjs.org/luaparse/-/luaparse-0.3.1.tgz
+	sha256sums = 3e80cdf03f807ba146541ae27285870de603bd96dbebc3022d57691d48a470c7
+	sha256sums = 10e108c9cf7d5f2879053dff18515fb405abf2ccef63eaaf017d9c571687a1d3
+	sha256sums = facb9742bf9ddecb2a2fa2935d486a05e359db51f5fd6147f4f23d433e3c854b
+
+pkgname = quarto-course-perf

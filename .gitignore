@@ -1,0 +1,9 @@
+/src/
+/pkg/
+/*.tar.gz
+/*.tgz
+/*.pkg.tar.*
+/ci/quarto/src/
+/ci/quarto/pkg/
+/ci/quarto/*.tar.gz
+/ci/quarto/*.pkg.tar.*

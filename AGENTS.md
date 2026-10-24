@@ -1,0 +1,13 @@
+# Инструкции для Codex
+
+Этот репозиторий хранит готовую упаковку конкретного опубликованного выпуска
+quarto-course-perf для Arch Linux. Исходники, генератор архивов, оболочка и runtime
+принадлежат quarto-course-performance. Не копировать их и не исправлять здесь.
+
+Рецепт переносится из опубликованного Release после проверки receipt и SHA-256.
+Сохранять проверки зависимостей и сумм makepkg. `.SRCINFO` генерировать штатным
+`makepkg --printsrcinfo`. Приёмка: `bash ci/check-arch.sh /абсолютный/каталог`.
+
+Новые README, документация и описания PR пишутся по-русски по
+[общему языковому правилу](https://github.com/Afonenko-Course-Tools/quarto-course/blob/main/docs/russian-language-policy.md).
+Команды, API, пути, имена пакетов и URL сохраняются буквально.
