@@ -15,6 +15,9 @@ jobs:
       - name: Установить Podman
         run: sudo apt-get update && sudo apt-get install -y podman uidmap
       - name: Собрать и проверить установленную команду
+        env:
+          # Podman runner ограничивает длину runroot 50 символами.
+          PERF_ARCH_CACHE: /tmp/qcp-arch-cache
         run: bash ci/check-arch.sh "$RUNNER_TEMP/arch-evidence"
       - uses: actions/upload-artifact@v4
         if: always()
