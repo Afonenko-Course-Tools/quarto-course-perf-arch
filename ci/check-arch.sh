@@ -6,16 +6,19 @@ git -C "$repo" diff --quiet HEAD -- || { echo 'Сначала зафиксиру
 packaging_commit=$(git -C "$repo" rev-parse HEAD)
 evidence=${1:?Укажите внешний абсолютный каталог результатов}
 [[ $evidence = /* ]] || { echo 'Нужен абсолютный путь' >&2; exit 1; }
-mkdir -p "$evidence"
+cache=${PERF_ARCH_CACHE:-"$(dirname "$evidence")/quarto-course-perf-arch-cache"}
+[[ $cache = /* && $cache != "$evidence" ]] || { echo 'Кэш должен быть отдельным абсолютным каталогом' >&2; exit 1; }
+mkdir -p "$(dirname "$evidence")" "$cache/source-cache"
+mkdir "$evidence" || { echo 'Для каждого запуска требуется новый каталог результатов' >&2; exit 1; }
 image='docker.io/library/archlinux@sha256:3cbf69d2d5958d6a294f3722c5668e6187c4df8e00fa27f72352f0bf83e495e1'
 # Отдельное хранилище не затрагивает другие среды на ноутбуке.
-podman=(podman --root "$evidence/podman-root" --runroot "$evidence/podman-run" --storage-driver vfs)
+podman=(podman --root "$cache/podman-root" --runroot "$cache/podman-run" --storage-driver vfs)
 name="perf-arch-$$"
 trap '"${podman[@]}" rm -f "$name" >/dev/null 2>&1 || true' EXIT
 printf '%s\n' "$image" > "$evidence/image.txt"
 "${podman[@]}" pull --policy missing "$image" > "$evidence/pull.log" 2>&1
 "${podman[@]}" run -i --name "$name" --network host --userns keep-id:uid=1000,gid=1000 --user root \
-  -v "$repo:/input:ro" -v "$evidence:/evidence:rw" -e PACKAGING_COMMIT="$packaging_commit" "$image" bash -s > "$evidence/build.log" 2>&1 <<'ARCH'
+  -v "$repo:/input:ro" -v "$evidence:/evidence:rw" -v "$cache/source-cache:/source-cache:rw" -e PACKAGING_COMMIT="$packaging_commit" "$image" bash -s > "$evidence/build.log" 2>&1 <<'ARCH'
 set -euxo pipefail
 # Несколько подписанных Arch mirrors: один недоступный CDN не должен ломать приёмку.
 cat > /etc/pacman.d/mirrorlist <<'MIRRORS'
@@ -37,8 +40,8 @@ sudo -u builder git -C /work/repo checkout --detach "$PACKAGING_COMMIT"
 sudo -u builder git -C /work/repo rev-parse HEAD > /evidence/clone-commit.txt
 [[ $(cat /evidence/clone-commit.txt) == "$PACKAGING_COMMIT" ]]
 # Кэш только скачанных опубликованных архивов: makepkg проверяет суммы на каждом запуске.
-install -d -m755 -o builder -g builder /evidence/source-cache
-printf '\nSRCDEST=/evidence/source-cache\n' >> /etc/makepkg.conf
+install -d -m755 -o builder -g builder /source-cache
+printf '\nSRCDEST=/source-cache\n' >> /etc/makepkg.conf
 cd /work/repo
 sudo -u builder bash -c 'makepkg --printsrcinfo | diff -u .SRCINFO -'
 pacman -Q > /evidence/arch-packages.txt
@@ -62,7 +65,7 @@ quarto --version > /evidence/quarto-version.txt
 cd /work/repo
 sudo -u builder makepkg --verifysource > /evidence/verifysource.log 2>&1
 # Контроль повреждённого опубликованного исходника; после него вернуть оригинал.
-source_archive=/evidence/source-cache/quarto-course-perf-2.0.0.tar.gz
+source_archive=/source-cache/quarto-course-perf-2.0.0.tar.gz
 sudo -u builder cp "$source_archive" /tmp/source-original.tar.gz
 printf '\ncorrupt\n' >> "$source_archive"
 if sudo -u builder makepkg --verifysource > /evidence/corrupt-source.log 2>&1; then exit 1; fi
@@ -78,7 +81,7 @@ namcap PKGBUILD "$package" > /evidence/namcap.log 2>&1 || namcap_status=$?
 printf '%s\n' "$namcap_status" > /evidence/namcap-status.txt
 pacman -U --noconfirm "$package"
 cp "$package" /evidence/
-sha256sum PKGBUILD .SRCINFO "$source_archive" /evidence/source-cache/typescript-5.9.3.tgz /evidence/source-cache/luaparse-0.3.1.tgz /evidence/source-cache/quarto-1.11.6-linux-amd64.tar.gz "$package" > /evidence/SHA256SUMS
+sha256sum PKGBUILD .SRCINFO "$source_archive" /source-cache/typescript-5.9.3.tgz /source-cache/luaparse-0.3.1.tgz /source-cache/quarto-1.11.6-linux-amd64.tar.gz "$package" > /evidence/SHA256SUMS
 pacman -Q quarto-course-perf quarto-ci deno > /evidence/installed-packages.txt
 chown -R builder:builder /work
 ARCH
