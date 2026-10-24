@@ -31,6 +31,10 @@ mkdir -p /work
 chown builder:builder /work
 # Только отслеживаемое дерево: артефакты и developer-кэши не переносятся.
 sudo -u builder git -c safe.directory=/input clone --no-hardlinks /input /work/repo
+sudo -u builder git -C /work/repo rev-parse HEAD > /evidence/clone-commit.txt
+# Кэш только скачанных опубликованных архивов: makepkg проверяет суммы на каждом запуске.
+install -d -m755 -o builder -g builder /evidence/source-cache
+printf '\nSRCDEST=/evidence/source-cache\n' >> /etc/makepkg.conf
 cd /work/repo
 sudo -u builder bash -c 'makepkg --printsrcinfo | diff -u .SRCINFO -'
 pacman -Q > /evidence/arch-packages.txt
@@ -79,7 +83,7 @@ local_image="localhost/perf-arch-checked:$$"
   -e PERF_SOURCE_ROOT=/work/repo/src/quarto-course-perf-f79d4f7e4cf2d235ae7d35a7b6a1b7a6be42486f \
   "$local_image" bash /work/repo/tests/installed-smoke.sh > "$evidence/smoke.log" 2>&1
 "${podman[@]}" image inspect "$local_image" > "$evidence/prepared-image-inspect.json"
-python3 - "$evidence" "$(git -C "$repo" rev-parse HEAD)" <<'REPORT'
+python3 - "$evidence" "$(cat "$evidence/clone-commit.txt")" <<'REPORT'
 import hashlib, json, pathlib, sys
 p=pathlib.Path(sys.argv[1])
 result={
