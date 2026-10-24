@@ -2,6 +2,8 @@
 set -euo pipefail
 # Один и тот же цикл для локальной проверки и GitHub Actions; нужен rootless Podman.
 repo=$(cd "$(dirname "$0")/.." && pwd)
+git -C "$repo" diff --quiet HEAD -- || { echo 'Сначала зафиксируйте изменения проверяемого дерева' >&2; exit 1; }
+packaging_commit=$(git -C "$repo" rev-parse HEAD)
 evidence=${1:?Укажите внешний абсолютный каталог результатов}
 [[ $evidence = /* ]] || { echo 'Нужен абсолютный путь' >&2; exit 1; }
 mkdir -p "$evidence"
@@ -13,7 +15,7 @@ trap '"${podman[@]}" rm -f "$name" >/dev/null 2>&1 || true' EXIT
 printf '%s\n' "$image" > "$evidence/image.txt"
 "${podman[@]}" pull --policy missing "$image" > "$evidence/pull.log" 2>&1
 "${podman[@]}" run -i --name "$name" --network host --userns keep-id:uid=1000,gid=1000 --user root \
-  -v "$repo:/input:ro" -v "$evidence:/evidence:rw" "$image" bash -s > "$evidence/build.log" 2>&1 <<'ARCH'
+  -v "$repo:/input:ro" -v "$evidence:/evidence:rw" -e PACKAGING_COMMIT="$packaging_commit" "$image" bash -s > "$evidence/build.log" 2>&1 <<'ARCH'
 set -euxo pipefail
 # Несколько подписанных Arch mirrors: один недоступный CDN не должен ломать приёмку.
 cat > /etc/pacman.d/mirrorlist <<'MIRRORS'
@@ -30,8 +32,10 @@ printf 'builder ALL=(ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/builder
 mkdir -p /work
 chown builder:builder /work
 # Только отслеживаемое дерево: артефакты и developer-кэши не переносятся.
-sudo -u builder git -c safe.directory=/input clone --no-hardlinks /input /work/repo
+sudo -u builder git -c safe.directory=/input clone --no-hardlinks --no-checkout /input /work/repo
+sudo -u builder git -C /work/repo checkout --detach "$PACKAGING_COMMIT"
 sudo -u builder git -C /work/repo rev-parse HEAD > /evidence/clone-commit.txt
+[[ $(cat /evidence/clone-commit.txt) == "$PACKAGING_COMMIT" ]]
 # Кэш только скачанных опубликованных архивов: makepkg проверяет суммы на каждом запуске.
 install -d -m755 -o builder -g builder /evidence/source-cache
 printf '\nSRCDEST=/evidence/source-cache\n' >> /etc/makepkg.conf
