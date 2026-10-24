@@ -11,7 +11,7 @@ podman=(podman --root "$evidence/podman-root" --runroot "$evidence/podman-run" -
 name="perf-arch-$$"
 trap '"${podman[@]}" rm -f "$name" >/dev/null 2>&1 || true' EXIT
 printf '%s\n' "$image" > "$evidence/image.txt"
-"${podman[@]}" pull "$image" > "$evidence/pull.log" 2>&1
+"${podman[@]}" pull --policy missing "$image" > "$evidence/pull.log" 2>&1
 "${podman[@]}" run --name "$name" --userns keep-id:uid=1000,gid=1000 --user root \
   -v "$repo:/input:ro" -v "$evidence:/evidence:rw" "$image" bash -s > "$evidence/build.log" 2>&1 <<'ARCH'
 set -euxo pipefail
@@ -70,4 +70,23 @@ local_image="localhost/perf-arch-checked:$$"
   -e PERF_SOURCE_ROOT=/work/repo/src/quarto-course-perf-f79d4f7e4cf2d235ae7d35a7b6a1b7a6be42486f \
   "$local_image" bash /work/repo/tests/installed-smoke.sh > "$evidence/smoke.log" 2>&1
 "${podman[@]}" image inspect "$local_image" > "$evidence/prepared-image-inspect.json"
-echo 'Сборка, pacman и изолированная проверка: PASS'
+python3 - "$evidence" "$(git -C "$repo" rev-parse HEAD)" <<'REPORT'
+import hashlib, json, pathlib, sys
+p=pathlib.Path(sys.argv[1])
+result={
+  'status':'PASS', 'packaging_commit':sys.argv[2],
+  'upstream_commit':'f79d4f7e4cf2d235ae7d35a7b6a1b7a6be42486f',
+  'image':(p/'image.txt').read_text().strip(),
+  'checks':{'makepkg_printsrcinfo':0,'makepkg_verifysource':0,'makepkg_cleanbuild_force':0,'pacman_install':0,'public_wrapper_summary':0,'installed_ts_trace':0},
+  'negative_controls':{'missing_quarto':'rejected','corrupt_source':'rejected','stale_srcinfo':'rejected'},
+  'hashes':(p/'SHA256SUMS').read_text(),
+  'versions':{name:(p/(name+'-version.txt')).read_text() for name in ['pacman','makepkg','deno','quarto']},
+  'namcap':(p/'namcap.log').read_text(),
+  'installed_tree':json.loads((p/'smoke/installed-tree.json').read_text()),
+  'checker':(p/'smoke/installed-checker.log').read_text(),
+  'package':[{ 'file':f.name,'sha256':hashlib.sha256(f.read_bytes()).hexdigest()} for f in p.glob('quarto-course-perf-*.pkg.tar.zst')],
+  'limits':['Лицензия исходного приложения не объявлена; namcap содержит замечания.', 'Побайтная воспроизводимость пакета не заявлена.']
+}
+(p/'package-checks.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
+REPORT
+echo 'Сборка, pacman и изолированная проверка: PASS' 

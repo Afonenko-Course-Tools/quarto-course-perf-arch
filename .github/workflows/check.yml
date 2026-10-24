@@ -23,6 +23,7 @@ jobs:
           path: |
             ${{ runner.temp }}/arch-evidence/*.log
             ${{ runner.temp }}/arch-evidence/*.txt
+            ${{ runner.temp }}/arch-evidence/package-checks.json
             ${{ runner.temp }}/arch-evidence/SHA256SUMS
             ${{ runner.temp }}/arch-evidence/smoke
             ${{ runner.temp }}/arch-evidence/*.pkg.tar.zst
