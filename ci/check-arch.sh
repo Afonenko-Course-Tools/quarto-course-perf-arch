@@ -59,7 +59,7 @@ pacman -U --noconfirm "$package"
 cp "$package" /evidence/
 sha256sum PKGBUILD .SRCINFO *.tar.gz *.tgz "$package" > /evidence/SHA256SUMS
 pacman -Q quarto-course-perf quarto-ci deno > /evidence/installed-packages.txt
-chown -R builder:builder /work /evidence
+chown -R builder:builder /work
 ARCH
 # Сохранить подготовленные npm и checker, затем отключить сеть и запись системного дерева.
 local_image="localhost/perf-arch-checked:$$"
