@@ -60,7 +60,7 @@ grep -qi 'FAILED' /evidence/corrupt-source.log
 sudo -u builder cp /tmp/source-original.tar.gz quarto-course-perf-2.0.0.tar.gz
 sudo -u builder makepkg --cleanbuild --force --noconfirm > /evidence/makepkg.log 2>&1
 sudo -u builder makepkg --packagelist > /evidence/packagelist.txt
-package=$(while IFS= read -r p; do [[ -f $p && $(basename "$p") = quarto-course-perf-2.0.0-1-any.pkg.tar.* ]] && printf '%s\n' "$p"; done < /evidence/packagelist.txt)
+package=$(while IFS= read -r p; do if [[ -f $p && $(basename "$p") = quarto-course-perf-2.0.0-1-any.pkg.tar.* ]]; then printf '%s\n' "$p"; fi; done < /evidence/packagelist.txt)
 [[ -n $package && $(wc -l <<< "$package") = 1 ]]
 pacman -Qlp "$package" > /evidence/package-files.txt
 namcap PKGBUILD "$package" > /evidence/namcap.log 2>&1 || true
