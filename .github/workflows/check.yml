@@ -1,0 +1,28 @@
+name: Проверка Arch
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  arch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Установить Podman
+        run: sudo apt-get update && sudo apt-get install -y podman uidmap
+      - name: Собрать и проверить установленную команду
+        run: bash ci/check-arch.sh "$RUNNER_TEMP/arch-evidence"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: arch-package-checks
+          path: |
+            ${{ runner.temp }}/arch-evidence/*.log
+            ${{ runner.temp }}/arch-evidence/*.txt
+            ${{ runner.temp }}/arch-evidence/SHA256SUMS
+            ${{ runner.temp }}/arch-evidence/smoke
+            ${{ runner.temp }}/arch-evidence/*.pkg.tar.zst

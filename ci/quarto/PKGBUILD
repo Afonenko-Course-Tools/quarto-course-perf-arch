@@ -1,0 +1,19 @@
+# Только настоящий провайдер Quarto для изолированной приёмки, не поставка для пользователя.
+pkgname=quarto-ci
+pkgver=1.11.6
+pkgrel=1
+pkgdesc='Официальный Quarto для проверки упаковки в CI'
+arch=('x86_64')
+url='https://quarto.org'
+license=('GPL-2.0-or-later')
+depends=('bash' 'glibc' 'zlib' 'openssl')
+provides=('quarto=1.11.6')
+conflicts=('quarto')
+source=("https://github.com/quarto-dev/quarto-cli/releases/download/v${pkgver}/quarto-${pkgver}-linux-amd64.tar.gz")
+sha256sums=('1559c5f02fd012d4fd45bab11d127d0fdd8cc21a539b917bcda9aaa3a179822d')
+options=('!strip' '!debug')
+package() {
+  install -dm755 "$pkgdir/opt" "$pkgdir/usr/bin"
+  cp -a "$srcdir/quarto-$pkgver" "$pkgdir/opt/quarto"
+  ln -s /opt/quarto/bin/quarto "$pkgdir/usr/bin/quarto"
+}
