@@ -45,8 +45,9 @@ deno --version > /evidence/deno-version.txt
 if sudo -u builder makepkg --cleanbuild --force > /evidence/missing-quarto.log 2>&1; then
   echo 'Пропущена обязательная зависимость quarto'; exit 1
 fi
-grep -q quarto /evidence/missing-quarto.log
-sudo -u builder bash -c 'makepkg --printsrcinfo; echo "# устаревший metadata"' > /tmp/stale-srcinfo
+grep -q "Missing dependencies:" /evidence/missing-quarto.log
+grep -q "  -> quarto" /evidence/missing-quarto.log
+sudo -u builder bash -c "makepkg --printsrcinfo | sed 's/pkgver = 2.0.0/pkgver = 1.0.0/'" > /tmp/stale-srcinfo
 if diff -u .SRCINFO /tmp/stale-srcinfo > /evidence/stale-srcinfo.log; then exit 1; fi
 cd ci/quarto
 sudo -u builder makepkg --cleanbuild --force --noconfirm
@@ -67,7 +68,9 @@ sudo -u builder makepkg --packagelist > /evidence/packagelist.txt
 package=$(while IFS= read -r p; do if [[ -f $p && $(basename "$p") = quarto-course-perf-2.0.0-1-any.pkg.tar.* ]]; then printf '%s\n' "$p"; fi; done < /evidence/packagelist.txt)
 [[ -n $package && $(wc -l <<< "$package") = 1 ]]
 pacman -Qlp "$package" > /evidence/package-files.txt
-namcap PKGBUILD "$package" > /evidence/namcap.log 2>&1 || true
+namcap_status=0
+namcap PKGBUILD "$package" > /evidence/namcap.log 2>&1 || namcap_status=$?
+printf '%s\n' "$namcap_status" > /evidence/namcap-status.txt
 pacman -U --noconfirm "$package"
 cp "$package" /evidence/
 sha256sum PKGBUILD .SRCINFO *.tar.gz *.tgz "$package" > /evidence/SHA256SUMS
@@ -94,6 +97,16 @@ result={
   'negative_controls':{'missing_quarto':'rejected','corrupt_source':'rejected','stale_srcinfo':'rejected'},
   'hashes':(p/'SHA256SUMS').read_text(),
   'versions':{name:(p/(name+'-version.txt')).read_text() for name in ['pacman','makepkg','deno','quarto']},
+  'commands':[
+    'makepkg --printsrcinfo | diff -u .SRCINFO -',
+    'makepkg --verifysource',
+    'makepkg --cleanbuild --force --noconfirm',
+    'makepkg --packagelist', 'pacman -Qlp PACKAGE', 'namcap PKGBUILD PACKAGE',
+    'pacman -U --noconfirm PACKAGE',
+    '/usr/bin/quarto-course-perf render --perf-mode summary --perf-output /evidence/smoke/summary index.qmd',
+    'deno run --config PERF_SOURCE_ROOT/deno.json --lock PERF_SOURCE_ROOT/deno.lock --frozen --node-modules-dir=manual --cached-only -A PERF_SOURCE_ROOT/tools/check-installed.ts --root /usr/lib/quarto-course-perf'
+  ],
+  'namcap_status':int((p/'namcap-status.txt').read_text()),
   'namcap':(p/'namcap.log').read_text(),
   'installed_tree':json.loads((p/'smoke/installed-tree.json').read_text()),
   'checker':(p/'smoke/installed-checker.log').read_text(),
