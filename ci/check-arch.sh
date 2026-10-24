@@ -64,13 +64,17 @@ pacman -U --noconfirm "${quarto_packages[0]}"
 quarto --version > /evidence/quarto-version.txt
 cd /work/repo
 sudo -u builder makepkg --verifysource > /evidence/verifysource.log 2>&1
-# Контроль повреждённого опубликованного исходника; после него вернуть оригинал.
+# Контроль работает с отдельной копией SRCDEST: interruption не портит общий кэш.
 source_archive=/source-cache/quarto-course-perf-2.0.0.tar.gz
-sudo -u builder cp "$source_archive" /tmp/source-original.tar.gz
-printf '\ncorrupt\n' >> "$source_archive"
-if sudo -u builder makepkg --verifysource > /evidence/corrupt-source.log 2>&1; then exit 1; fi
+negative_sources=$(mktemp -d /tmp/perf-corrupt-source.XXXXXXXX)
+chown builder:builder "$negative_sources"
+cp "$source_archive" /source-cache/typescript-5.9.3.tgz /source-cache/luaparse-0.3.1.tgz "$negative_sources/"
+printf '\ncorrupt\n' >> "$negative_sources/quarto-course-perf-2.0.0.tar.gz"
+cp /etc/makepkg.conf /tmp/makepkg-corrupt.conf
+printf '\nSRCDEST=%q\n' "$negative_sources" >> /tmp/makepkg-corrupt.conf
+if sudo -u builder makepkg --config /tmp/makepkg-corrupt.conf --verifysource > /evidence/corrupt-source.log 2>&1; then exit 1; fi
 grep -qi 'FAILED' /evidence/corrupt-source.log
-sudo -u builder cp /tmp/source-original.tar.gz "$source_archive"
+rm -rf "$negative_sources"
 sudo -u builder makepkg --cleanbuild --force --noconfirm > /evidence/makepkg.log 2>&1
 sudo -u builder makepkg --packagelist > /evidence/packagelist.txt
 package=$(while IFS= read -r p; do if [[ -f $p && $(basename "$p") = quarto-course-perf-2.0.0-1-any.pkg.tar.* ]]; then printf '%s\n' "$p"; fi; done < /evidence/packagelist.txt)
