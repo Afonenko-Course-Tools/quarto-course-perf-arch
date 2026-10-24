@@ -62,11 +62,12 @@ quarto --version > /evidence/quarto-version.txt
 cd /work/repo
 sudo -u builder makepkg --verifysource > /evidence/verifysource.log 2>&1
 # Контроль повреждённого опубликованного исходника; после него вернуть оригинал.
-sudo -u builder cp quarto-course-perf-2.0.0.tar.gz /tmp/source-original.tar.gz
-printf '\ncorrupt\n' >> quarto-course-perf-2.0.0.tar.gz
+source_archive=/evidence/source-cache/quarto-course-perf-2.0.0.tar.gz
+sudo -u builder cp "$source_archive" /tmp/source-original.tar.gz
+printf '\ncorrupt\n' >> "$source_archive"
 if sudo -u builder makepkg --verifysource > /evidence/corrupt-source.log 2>&1; then exit 1; fi
 grep -qi 'FAILED' /evidence/corrupt-source.log
-sudo -u builder cp /tmp/source-original.tar.gz quarto-course-perf-2.0.0.tar.gz
+sudo -u builder cp /tmp/source-original.tar.gz "$source_archive"
 sudo -u builder makepkg --cleanbuild --force --noconfirm > /evidence/makepkg.log 2>&1
 sudo -u builder makepkg --packagelist > /evidence/packagelist.txt
 package=$(while IFS= read -r p; do if [[ -f $p && $(basename "$p") = quarto-course-perf-2.0.0-1-any.pkg.tar.* ]]; then printf '%s\n' "$p"; fi; done < /evidence/packagelist.txt)
@@ -77,7 +78,7 @@ namcap PKGBUILD "$package" > /evidence/namcap.log 2>&1 || namcap_status=$?
 printf '%s\n' "$namcap_status" > /evidence/namcap-status.txt
 pacman -U --noconfirm "$package"
 cp "$package" /evidence/
-sha256sum PKGBUILD .SRCINFO *.tar.gz *.tgz "$package" > /evidence/SHA256SUMS
+sha256sum PKGBUILD .SRCINFO "$source_archive" /evidence/source-cache/typescript-5.9.3.tgz /evidence/source-cache/luaparse-0.3.1.tgz /evidence/source-cache/quarto-1.11.6-linux-amd64.tar.gz "$package" > /evidence/SHA256SUMS
 pacman -Q quarto-course-perf quarto-ci deno > /evidence/installed-packages.txt
 chown -R builder:builder /work
 ARCH
