@@ -21,6 +21,9 @@ Server = https://archlinux.cachyos.org/repo/$repo/os/$arch
 Server = https://geo.mirror.pkgbuild.com/$repo/os/$arch
 Server = https://fastly.mirror.pkgbuild.com/$repo/os/$arch
 MIRRORS
+# libalpm в этой среде зависает при загрузке некоторых .sig, а curl получает их.
+# Штатный XferCommand меняет транспорт, подписи pacman проверяет как обычно.
+sed -i '/^\[options\]/a XferCommand = /usr/bin/curl --http1.1 --fail --location --retry 3 --connect-timeout 20 --output %o %u' /etc/pacman.conf
 pacman -Syu --noconfirm --needed base-devel deno time util-linux namcap curl git python sudo
 useradd -m -u 1000 builder
 printf 'builder ALL=(ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/builder
