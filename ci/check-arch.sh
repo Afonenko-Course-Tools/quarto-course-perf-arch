@@ -12,7 +12,7 @@ name="perf-arch-$$"
 trap '"${podman[@]}" rm -f "$name" >/dev/null 2>&1 || true' EXIT
 printf '%s\n' "$image" > "$evidence/image.txt"
 "${podman[@]}" pull --policy missing "$image" > "$evidence/pull.log" 2>&1
-"${podman[@]}" run --name "$name" --userns keep-id:uid=1000,gid=1000 --user root \
+"${podman[@]}" run -i --name "$name" --userns keep-id:uid=1000,gid=1000 --user root \
   -v "$repo:/input:ro" -v "$evidence:/evidence:rw" "$image" bash -s > "$evidence/build.log" 2>&1 <<'ARCH'
 set -euxo pipefail
 pacman -Syu --noconfirm --needed base-devel deno time util-linux namcap curl git python sudo
