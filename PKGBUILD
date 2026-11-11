@@ -1,6 +1,6 @@
-# Подготовить конкретный рецепт: tools/prepare-arch-source.ts.
+# Обычный tag archive Performance; integrity проверяет makepkg.
 pkgname=quarto-course-perf
-pkgver=2.1.1
+pkgver=2.2.0
 pkgrel=1
 pkgdesc='Измерение рендера Quarto и изолированные эксперименты курса'
 arch=('any')
@@ -8,21 +8,20 @@ url='https://github.com/Afonenko-Course-Tools/quarto-course-performance'
 # В исходниках нет лицензии; решение правообладателя ещё требуется.
 license=()
 depends=('deno' 'quarto' 'time' 'util-linux' 'typescript')
-optdepends=('hyperfine: сравнительные измерения' 'git: получение исходников эксперимента' 'unzip: распаковка расширенных входных данных')
-_source_commit='13b727a99effdfa530a37b0ecfe92de24386d5e5'
-source=("${pkgname}-${pkgver}.tar.gz::${url}/releases/download/v${pkgver}/${pkgname}-${pkgver}.tar.gz")
-sha256sums=('a0b658490289443870e545d9f79a59facb115a8f5a5edfb968c170775e188c86')
+optdepends=('hyperfine: сравнительные измерения' 'git: экспорт локальных checkout эксперимента' 'tar: распаковка входов эксперимента' 'unzip: распаковка расширенных входных данных')
+source=("${pkgname}-${pkgver}.tar.gz::${url}/archive/refs/tags/v${pkgver}.tar.gz")
+sha256sums=('626caee6ef9842930b0641d708e74ca1b94c94139ca9a9a64c0562dd9e17d649')
 
 check() {
   : "${srcdir:?makepkg должен задать srcdir}"
-  cd "$srcdir/${pkgname}-${_source_commit}" || return
+  cd "$srcdir/quarto-course-performance-${pkgver}" || return
   deno run --config deno.json --lock deno.lock --frozen --cached-only -A src/cli.ts --version
   deno test --no-check --cached-only -A tests/instrumentation/ts.test.ts
 }
 
 package() {
   : "${srcdir:?makepkg должен задать srcdir}"
-  cd "$srcdir/${pkgname}-${_source_commit}" || return
+  cd "$srcdir/quarto-course-performance-${pkgver}" || return
   : "${pkgdir:?makepkg должен задать pkgdir}"
   local app="$pkgdir/usr/lib/$pkgname"
   install -dm755 "$app/docs" "$pkgdir/usr/share/doc/$pkgname"
