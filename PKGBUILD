@@ -1,40 +1,32 @@
 # Подготовить конкретный рецепт: tools/prepare-arch-source.ts.
 pkgname=quarto-course-perf
-pkgver=2.0.0
+pkgver=2.1.1
 pkgrel=1
 pkgdesc='Измерение рендера Quarto и изолированные эксперименты курса'
 arch=('any')
 url='https://github.com/Afonenko-Course-Tools/quarto-course-performance'
 # В исходниках нет лицензии; решение правообладателя ещё требуется.
 license=()
-depends=('deno' 'quarto' 'time' 'util-linux')
+depends=('deno' 'quarto' 'time' 'util-linux' 'typescript')
 optdepends=('hyperfine: сравнительные измерения' 'git: получение исходников эксперимента' 'unzip: распаковка расширенных входных данных')
-_source_commit='f79d4f7e4cf2d235ae7d35a7b6a1b7a6be42486f'
-source=("${pkgname}-${pkgver}.tar.gz::${url}/releases/download/v${pkgver}/${pkgname}-${pkgver}.tar.gz"
-        'typescript-5.9.3.tgz::https://registry.npmjs.org/typescript/-/typescript-5.9.3.tgz'
-        'luaparse-0.3.1.tgz::https://registry.npmjs.org/luaparse/-/luaparse-0.3.1.tgz')
-noextract=('typescript-5.9.3.tgz' 'luaparse-0.3.1.tgz')
-sha256sums=('3e80cdf03f807ba146541ae27285870de603bd96dbebc3022d57691d48a470c7'
-            '10e108c9cf7d5f2879053dff18515fb405abf2ccef63eaaf017d9c571687a1d3'
-            'facb9742bf9ddecb2a2fa2935d486a05e359db51f5fd6147f4f23d433e3c854b')
-
-prepare() {
-  cd "$srcdir/${pkgname}-${_source_commit}"
-  mkdir -p node_modules/{typescript,luaparse}
-  bsdtar -xf "$srcdir/typescript-5.9.3.tgz" --strip-components 1 -C node_modules/typescript
-  bsdtar -xf "$srcdir/luaparse-0.3.1.tgz" --strip-components 1 -C node_modules/luaparse
-}
+_source_commit='13b727a99effdfa530a37b0ecfe92de24386d5e5'
+source=("${pkgname}-${pkgver}.tar.gz::${url}/releases/download/v${pkgver}/${pkgname}-${pkgver}.tar.gz")
+sha256sums=('a0b658490289443870e545d9f79a59facb115a8f5a5edfb968c170775e188c86')
 
 check() {
-  cd "$srcdir/${pkgname}-${_source_commit}"
-  deno run --config deno.json --lock deno.lock --frozen --node-modules-dir=manual --cached-only -A src/cli.ts --version
+  : "${srcdir:?makepkg должен задать srcdir}"
+  cd "$srcdir/${pkgname}-${_source_commit}" || return
+  deno run --config deno.json --lock deno.lock --frozen --cached-only -A src/cli.ts --version
+  deno test --no-check --cached-only -A tests/instrumentation/ts.test.ts
 }
 
 package() {
-  cd "$srcdir/${pkgname}-${_source_commit}"
+  : "${srcdir:?makepkg должен задать srcdir}"
+  cd "$srcdir/${pkgname}-${_source_commit}" || return
+  : "${pkgdir:?makepkg должен задать pkgdir}"
   local app="$pkgdir/usr/lib/$pkgname"
   install -dm755 "$app/docs" "$pkgdir/usr/share/doc/$pkgname"
-  cp -r src bridge node_modules "$app/"
+  cp -r src bridge "$app/"
   install -m644 deno.json deno.lock "$app/"
   install -m644 docs/operation-registry.json "$app/docs/"
   install -Dm755 packaging/arch/quarto-course-perf "$pkgdir/usr/bin/$pkgname"

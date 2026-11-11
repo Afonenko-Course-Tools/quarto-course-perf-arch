@@ -34,7 +34,7 @@ MIRRORS
 # libalpm в этой среде зависает при загрузке некоторых .sig, а curl получает их.
 # Штатный XferCommand меняет транспорт, подписи pacman проверяет как обычно.
 sed -i '/^\[options\]/a XferCommand = /usr/bin/curl --http1.1 --fail --location --retry 3 --connect-timeout 20 --output %o %u' /etc/pacman.conf
-pacman -Syu --noconfirm --needed base-devel deno time util-linux namcap curl git python sudo
+pacman -Syu --noconfirm --needed base-devel deno time util-linux namcap curl git python sudo typescript
 useradd -m -u 1000 builder
 printf 'builder ALL=(ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/builder
 mkdir -p /work
@@ -49,17 +49,27 @@ install -d -m755 -o builder -g builder /source-cache
 printf '\nSRCDEST=/source-cache\n' >> /etc/makepkg.conf
 cd /work/repo
 sudo -u builder bash -c 'makepkg --printsrcinfo | diff -u .SRCINFO -'
+# Выпуск принадлежит конкретному опубликованному рецепту, без второго списка версий.
+source PKGBUILD
+[[ $_source_commit =~ ^[0-9a-f]{40}$ && $pkgver =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+printf '%s\n' "/work/repo/src/${pkgname}-${_source_commit}" > /evidence/performance-source-root.txt
+python - "$_source_commit" "$pkgver" "$pkgrel" <<'IDENTITY'
+import json,sys
+with open('/evidence/source-identity.json','w') as target:
+ json.dump(dict(commit=sys.argv[1],version=sys.argv[2],pkgrel=sys.argv[3]),target)
+IDENTITY
 pacman -Q > /evidence/arch-packages.txt
 makepkg --version > /evidence/makepkg-version.txt
 pacman --version > /evidence/pacman-version.txt
 deno --version > /evidence/deno-version.txt
+tsc --version > /evidence/typescript-version.txt
 # Отрицательный контроль: настоящий Quarto обязателен ещё до сборки.
 if sudo -u builder makepkg --cleanbuild --force > /evidence/missing-quarto.log 2>&1; then
   echo 'Пропущена обязательная зависимость quarto'; exit 1
 fi
 grep -q "Missing dependencies:" /evidence/missing-quarto.log
 grep -q "  -> quarto" /evidence/missing-quarto.log
-sudo -u builder bash -c "makepkg --printsrcinfo | sed 's/pkgver = 2.0.0/pkgver = 1.0.0/'" > /tmp/stale-srcinfo
+sudo -u builder bash -c "makepkg --printsrcinfo | sed 's/pkgver = $pkgver/pkgver = 0.0.0/'" > /tmp/stale-srcinfo
 if diff -u .SRCINFO /tmp/stale-srcinfo > /evidence/stale-srcinfo.log; then exit 1; fi
 cd ci/quarto
 sudo -u builder makepkg --cleanbuild --force --noconfirm
@@ -70,11 +80,17 @@ quarto --version > /evidence/quarto-version.txt
 cd /work/repo
 sudo -u builder makepkg --verifysource > /evidence/verifysource.log 2>&1
 # Контроль работает с отдельной копией SRCDEST: interruption не портит общий кэш.
-source_archive=/source-cache/quarto-course-perf-2.0.0.tar.gz
+source_archives=()
+for entry in "${source[@]}"; do
+  filename=${entry%%::*}
+  filename=${filename##*/}
+  source_archives+=("/source-cache/$filename")
+done
+source_archive=${source_archives[0]}
 negative_sources=$(mktemp -d /tmp/perf-corrupt-source.XXXXXXXX)
 chown builder:builder "$negative_sources"
-cp "$source_archive" /source-cache/typescript-5.9.3.tgz /source-cache/luaparse-0.3.1.tgz "$negative_sources/"
-printf '\ncorrupt\n' >> "$negative_sources/quarto-course-perf-2.0.0.tar.gz"
+cp "${source_archives[@]}" "$negative_sources/"
+printf '\ncorrupt\n' >> "$negative_sources/$(basename "$source_archive")"
 cp /etc/makepkg.conf /tmp/makepkg-corrupt.conf
 printf '\nSRCDEST=%q\n' "$negative_sources" >> /tmp/makepkg-corrupt.conf
 if sudo -u builder makepkg --config /tmp/makepkg-corrupt.conf --verifysource > /evidence/corrupt-source.log 2>&1; then exit 1; fi
@@ -82,7 +98,7 @@ grep -qi 'FAILED' /evidence/corrupt-source.log
 rm -rf "$negative_sources"
 sudo -u builder makepkg --cleanbuild --force --noconfirm > /evidence/makepkg.log 2>&1
 sudo -u builder makepkg --packagelist > /evidence/packagelist.txt
-package=$(while IFS= read -r p; do if [[ -f $p && $(basename "$p") = quarto-course-perf-2.0.0-1-any.pkg.tar.* ]]; then printf '%s\n' "$p"; fi; done < /evidence/packagelist.txt)
+package=$(while IFS= read -r p; do if [[ -f $p && $(basename "$p") = "$pkgname-$pkgver-$pkgrel-any.pkg.tar."* ]]; then printf '%s\n' "$p"; fi; done < /evidence/packagelist.txt)
 [[ -n $package && $(wc -l <<< "$package") = 1 ]]
 pacman -Qlp "$package" > /evidence/package-files.txt
 namcap_status=0
@@ -90,17 +106,17 @@ namcap PKGBUILD "$package" > /evidence/namcap.log 2>&1 || namcap_status=$?
 printf '%s\n' "$namcap_status" > /evidence/namcap-status.txt
 pacman -U --noconfirm "$package"
 cp "$package" /evidence/
-sha256sum PKGBUILD .SRCINFO "$source_archive" /source-cache/typescript-5.9.3.tgz /source-cache/luaparse-0.3.1.tgz /source-cache/quarto-1.11.6-linux-amd64.tar.gz "$package" > /evidence/SHA256SUMS
-pacman -Q quarto-course-perf quarto-ci deno > /evidence/installed-packages.txt
+sha256sum PKGBUILD .SRCINFO "${source_archives[@]}" /source-cache/quarto-1.11.6-linux-amd64.tar.gz "$package" > /evidence/SHA256SUMS
+pacman -Q quarto-course-perf quarto-ci deno typescript > /evidence/installed-packages.txt
 chown -R builder:builder /work
 ARCH
-# Сохранить подготовленные npm и checker, затем отключить сеть и запись системного дерева.
+# Сохранить установленный системный Compiler API и checker, затем отключить сеть и запись системного дерева.
 local_image="localhost/perf-arch-checked:$$"
 "${podman[@]}" commit "$name" "$local_image" > "$evidence/prepared-image.txt"
 "${podman[@]}" run --rm --userns keep-id:uid=1000,gid=1000 --user builder --network none --read-only \
   --tmpfs /tmp:rw,exec,size=2g --tmpfs /home/builder:rw,exec,size=1g \
   -v "$evidence:/evidence:rw" -e EVIDENCE=/evidence/smoke \
-  -e PERF_SOURCE_ROOT=/work/repo/src/quarto-course-perf-f79d4f7e4cf2d235ae7d35a7b6a1b7a6be42486f \
+  -e PERF_SOURCE_ROOT="$(cat "$evidence/performance-source-root.txt")" \
   "$local_image" bash /work/repo/tests/installed-smoke.sh > "$evidence/smoke.log" 2>&1
 "${podman[@]}" image inspect "$local_image" > "$evidence/prepared-image-inspect.json"
 python3 - "$evidence" "$(cat "$evidence/clone-commit.txt")" <<'REPORT'
@@ -108,12 +124,12 @@ import hashlib, json, pathlib, sys
 p=pathlib.Path(sys.argv[1])
 result={
   'status':'PASS', 'packaging_commit':sys.argv[2],
-  'upstream_commit':'f79d4f7e4cf2d235ae7d35a7b6a1b7a6be42486f',
+  'upstream_commit':json.loads((p/'source-identity.json').read_text())['commit'],
   'image':(p/'image.txt').read_text().strip(),
   'checks':{'makepkg_printsrcinfo':0,'makepkg_verifysource':0,'makepkg_cleanbuild_force':0,'pacman_install':0,'public_wrapper_summary':0,'installed_ts_trace':0},
   'negative_controls':{'missing_quarto':'rejected','corrupt_source':'rejected','stale_srcinfo':'rejected'},
   'hashes':(p/'SHA256SUMS').read_text(),
-  'versions':{name:(p/(name+'-version.txt')).read_text() for name in ['pacman','makepkg','deno','quarto']},
+  'versions':{name:(p/(name+'-version.txt')).read_text() for name in ['pacman','makepkg','deno','quarto','typescript']},
   'commands':[
     'makepkg --printsrcinfo | diff -u .SRCINFO -',
     'makepkg --verifysource',
@@ -121,7 +137,7 @@ result={
     'makepkg --packagelist', 'pacman -Qlp PACKAGE', 'namcap PKGBUILD PACKAGE',
     'pacman -U --noconfirm PACKAGE',
     '/usr/bin/quarto-course-perf render --perf-mode summary --perf-output /evidence/smoke/summary index.qmd',
-    'deno run --config PERF_SOURCE_ROOT/deno.json --lock PERF_SOURCE_ROOT/deno.lock --frozen --node-modules-dir=manual --cached-only -A PERF_SOURCE_ROOT/tools/check-installed.ts --root /usr/lib/quarto-course-perf'
+    'deno run --config PERF_SOURCE_ROOT/deno.json --lock PERF_SOURCE_ROOT/deno.lock --frozen --cached-only -A PERF_SOURCE_ROOT/tools/check-installed.ts --root /usr/lib/quarto-course-perf'
   ],
   'namcap_status':int((p/'namcap-status.txt').read_text()),
   'namcap':(p/'namcap.log').read_text(),

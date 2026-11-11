@@ -1,12 +1,12 @@
 # quarto-course-perf для Arch Linux
 
-Готовая упаковка [Performance 2.0.0](https://github.com/Afonenko-Course-Tools/quarto-course-performance/releases/tag/v2.0.0).
+Готовая упаковка [Performance 2.1.1](https://github.com/Afonenko-Course-Tools/quarto-course-performance/releases/tag/v2.1.1).
 Репозиторий содержит конкретный `PKGBUILD` из опубликованного выпуска, `.SRCINFO`
 и приёмку установленной команды. AUR и собственный сервер пакетов не требуются.
 
 ## Установка
 
-Заранее установите `base-devel`, `git`, `deno`, `time`, `util-linux` и настоящий
+Заранее установите `base-devel`, `git`, `deno`, `time`, `util-linux`, `typescript` и настоящий
 pacman-пакет Quarto, предоставляющий зависимость `quarto`. На чистой Arch Linux
 его нужно подготовить отдельно: `makepkg` не устанавливает зависимости из AUR.
 Наличие команды `quarto` в `PATH` само по себе не заменяет pacman-провайдер.
@@ -23,8 +23,10 @@ quarto-course-perf --version
 quarto-course-perf --help
 ```
 
-`makepkg` скачает три закреплённых архива и проверит их SHA-256. Ручная подготовка
-npm, генерация рецепта и рабочее дерево разработчика Performance не нужны.
+`makepkg` скачает один закреплённый исходный архив и проверит его SHA-256.
+Compiler API и `tsc` предоставляет системный пакет `typescript` без закрепления
+точной версии. Runtime-пакет не включает `node_modules` или npm-компилятор.
+Ручная подготовка npm, генерация рецепта и рабочее дерево разработчика Performance не нужны.
 
 В каталоге проекта Quarto:
 
@@ -32,8 +34,8 @@ npm, генерация рецепта и рабочее дерево разра
 quarto-course-perf render --perf-mode summary index.qmd
 ```
 
-[Форматы и команды версии 2.0.0](https://github.com/Afonenko-Course-Tools/quarto-course-performance/blob/v2.0.0/docs/general-use-formats.md),
-[диагностика](https://github.com/Afonenko-Course-Tools/quarto-course-performance/blob/v2.0.0/docs/diagnostics.md).
+[Форматы и команды версии 2.1.1](https://github.com/Afonenko-Course-Tools/quarto-course-performance/blob/v2.1.1/docs/general-use-formats.md),
+[диагностика](https://github.com/Afonenko-Course-Tools/quarto-course-performance/blob/v2.1.1/docs/diagnostics.md).
 
 ## Обновление и удаление
 
@@ -48,9 +50,9 @@ makepkg -si
 sudo pacman -Rns quarto-course-perf
 ```
 
-Документация в `/usr/share/doc/quarto-course-perf` поставляется неизменённой из
-исторического архива 2.0.0 и может описывать прежний маршрут установки.
-Актуальные инструкции установки и обновления находятся в этом README.
+Документация в `/usr/share/doc/quarto-course-perf` поставляется из выбранного
+исходного архива 2.1.1. Исторические разделы сохраняют собственные версии и даты;
+актуальные инструкции установки и обновления находятся в этом README.
 
 ## Проверка и сопровождение
 
@@ -90,7 +92,7 @@ bash ci/check-arch.sh /абсолютный/новый/каталог-резул
 повышается `pkgrel`. Архивы, внутренний шаблон, оболочка и среда исполнения остаются у
 Performance; старые Releases не переписываются.
 
-В исходниках Performance 2.0.0 лицензия не объявлена; `license=()` в опубликованном
+В исходниках Performance лицензия не объявлена; `license=()` в опубликованном
 рецепте сохраняется. Это требует решения правообладателя. `namcap` сохраняется
 целиком в результатах проверки: сообщения об отсутствующей лицензии и
 эвристические замечания по зависимостям не означают чистую проверку.
