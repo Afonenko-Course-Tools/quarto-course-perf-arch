@@ -1,7 +1,7 @@
 # quarto-course-perf для Arch Linux
 
-Готовая упаковка [Performance 2.1.1](https://github.com/Afonenko-Course-Tools/quarto-course-performance/releases/tag/v2.1.1).
-Репозиторий содержит конкретный `PKGBUILD` из опубликованного выпуска, `.SRCINFO`
+Готовая упаковка [Performance 2.2.0](https://github.com/Afonenko-Course-Tools/quarto-course-performance/releases/tag/v2.2.0).
+Репозиторий содержит штатный `PKGBUILD` с обычным GitHub tag archive, `.SRCINFO`
 и приёмку установленной команды. AUR и собственный сервер пакетов не требуются.
 
 ## Установка
@@ -23,7 +23,8 @@ quarto-course-perf --version
 quarto-course-perf --help
 ```
 
-`makepkg` скачает один закреплённый исходный архив и проверит его SHA-256.
+`makepkg` скачает обычный tag archive исходников Performance и проверит его
+SHA-256 из `PKGBUILD`. Каталог распаковки — `quarto-course-performance-${pkgver}`.
 Compiler API и `tsc` предоставляет системный пакет `typescript` без закрепления
 точной версии. Runtime-пакет не включает `node_modules` или npm-компилятор.
 Ручная подготовка npm, генерация рецепта и рабочее дерево разработчика Performance не нужны.
@@ -34,8 +35,8 @@ Compiler API и `tsc` предоставляет системный пакет `
 quarto-course-perf render --perf-mode summary index.qmd
 ```
 
-[Форматы и команды версии 2.1.1](https://github.com/Afonenko-Course-Tools/quarto-course-performance/blob/v2.1.1/docs/general-use-formats.md),
-[диагностика](https://github.com/Afonenko-Course-Tools/quarto-course-performance/blob/v2.1.1/docs/diagnostics.md).
+[Форматы и команды версии 2.2.0](https://github.com/Afonenko-Course-Tools/quarto-course-performance/blob/v2.2.0/docs/general-use-formats.md),
+[диагностика](https://github.com/Afonenko-Course-Tools/quarto-course-performance/blob/v2.2.0/docs/diagnostics.md).
 
 ## Обновление и удаление
 
@@ -51,7 +52,7 @@ sudo pacman -Rns quarto-course-perf
 ```
 
 Документация в `/usr/share/doc/quarto-course-perf` поставляется из выбранного
-исходного архива 2.1.1. Исторические разделы сохраняют собственные версии и даты;
+исходного архива 2.2.0. Исторические разделы сохраняют собственные версии и даты;
 актуальные инструкции установки и обновления находятся в этом README.
 
 ## Проверка и сопровождение
@@ -76,21 +77,24 @@ bash ci/check-arch.sh /абсолютный/внешний/новый-катал
 неизменность установленного дерева. Отрицательные контроли проверяют повреждение
 архива, устаревшую `.SRCINFO` и отсутствие настоящего Quarto.
 
-Для следующего выпуска сопровождающий сверяет выпуск исходного приложения, сведения о происхождении
-исходников, коммит и SHA-256 архивов, переносит конкретный опубликованный рецепт и выполняет:
+Для следующего выпуска обновите `pkgver` в `PKGBUILD`. URL следует выбранному
+тегу `v${pkgver}`; отдельный commit selector, специальный release asset и
+source manifest не нужны. Обновите штатный checksum (команда `updpkgsums`
+предоставляется `pacman-contrib`), затем пересоздайте `.SRCINFO` и проверьте пакет:
 
 ```sh
+updpkgsums
 makepkg --printsrcinfo > .SRCINFO
 git add PKGBUILD .SRCINFO
-git commit -m "Обновить упаковку конкретного опубликованного выпуска"
+git commit -m "Обновить Arch-пакет Performance"
 bash ci/check-arch.sh /абсолютный/новый/каталог-результатов
 ```
 
 Проверка требует чистое зафиксированное дерево. После локальной приёмки требуется
 проверка GitHub Actions на том же коммите и тег упаковки.
 `pkgver` следует версии приложения; при изменении упаковки той же версии
-повышается `pkgrel`. Архивы, внутренний шаблон, оболочка и среда исполнения остаются у
-Performance; старые Releases не переписываются.
+повышается `pkgrel`. Исходники, оболочка и среда исполнения остаются у
+Performance; старые теги и Releases не переписываются.
 
 В исходниках Performance лицензия не объявлена; `license=()` в опубликованном
 рецепте сохраняется. Это требует решения правообладателя. `namcap` сохраняется

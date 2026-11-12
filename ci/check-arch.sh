@@ -49,15 +49,9 @@ install -d -m755 -o builder -g builder /source-cache
 printf '\nSRCDEST=/source-cache\n' >> /etc/makepkg.conf
 cd /work/repo
 sudo -u builder bash -c 'makepkg --printsrcinfo | diff -u .SRCINFO -'
-# Выпуск принадлежит конкретному опубликованному рецепту, без второго списка версий.
+# Source URL, версия и integrity принадлежат штатному рецепту makepkg.
 source PKGBUILD
-[[ $_source_commit =~ ^[0-9a-f]{40}$ && $pkgver =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
-printf '%s\n' "/work/repo/src/${pkgname}-${_source_commit}" > /evidence/performance-source-root.txt
-python - "$_source_commit" "$pkgver" "$pkgrel" <<'IDENTITY'
-import json,sys
-with open('/evidence/source-identity.json','w') as target:
- json.dump(dict(commit=sys.argv[1],version=sys.argv[2],pkgrel=sys.argv[3]),target)
-IDENTITY
+printf '%s\n' "/work/repo/src/quarto-course-performance-${pkgver}" > /evidence/performance-source-root.txt
 pacman -Q > /evidence/arch-packages.txt
 makepkg --version > /evidence/makepkg-version.txt
 pacman --version > /evidence/pacman-version.txt
@@ -124,7 +118,7 @@ import hashlib, json, pathlib, sys
 p=pathlib.Path(sys.argv[1])
 result={
   'status':'PASS', 'packaging_commit':sys.argv[2],
-  'upstream_commit':json.loads((p/'source-identity.json').read_text())['commit'],
+  'upstream_version':(p/'smoke/version.log').read_text().strip(),
   'image':(p/'image.txt').read_text().strip(),
   'checks':{'makepkg_printsrcinfo':0,'makepkg_verifysource':0,'makepkg_cleanbuild_force':0,'pacman_install':0,'public_wrapper_summary':0,'installed_ts_trace':0},
   'negative_controls':{'missing_quarto':'rejected','corrupt_source':'rejected','stale_srcinfo':'rejected'},

@@ -1,6 +1,6 @@
 pkgbase = quarto-course-perf
 	pkgdesc = Измерение рендера Quarto и изолированные эксперименты курса
-	pkgver = 2.1.1
+	pkgver = 2.2.0
 	pkgrel = 1
 	url = https://github.com/Afonenko-Course-Tools/quarto-course-performance
 	arch = any
@@ -10,9 +10,10 @@ pkgbase = quarto-course-perf
 	depends = util-linux
 	depends = typescript
 	optdepends = hyperfine: сравнительные измерения
-	optdepends = git: получение исходников эксперимента
+	optdepends = git: экспорт локальных checkout эксперимента
+	optdepends = tar: распаковка входов эксперимента
 	optdepends = unzip: распаковка расширенных входных данных
-	source = quarto-course-perf-2.1.1.tar.gz::https://github.com/Afonenko-Course-Tools/quarto-course-performance/releases/download/v2.1.1/quarto-course-perf-2.1.1.tar.gz
-	sha256sums = a0b658490289443870e545d9f79a59facb115a8f5a5edfb968c170775e188c86
+	source = quarto-course-perf-2.2.0.tar.gz::https://github.com/Afonenko-Course-Tools/quarto-course-performance/archive/refs/tags/v2.2.0.tar.gz
+	sha256sums = 626caee6ef9842930b0641d708e74ca1b94c94139ca9a9a64c0562dd9e17d649
 
 pkgname = quarto-course-perf

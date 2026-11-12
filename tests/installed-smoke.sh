@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 [[ $(id -u) != 0 ]] || { echo 'Проверка требует обычного пользователя' >&2; exit 1; }
-: "${PERF_SOURCE_ROOT:?Требуется подготовленный source root того же Release}"
+: "${PERF_SOURCE_ROOT:?Требуется подготовленный source root того же исходного архива}"
 : "${EVIDENCE:?Требуется каталог результатов}"
 test -x /usr/bin/quarto-course-perf
 mkdir -p "$EVIDENCE"
